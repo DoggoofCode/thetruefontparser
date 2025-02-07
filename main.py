@@ -1,4 +1,4 @@
-from bytereader import ByteReader, GlyphData, bitStr
+from bytereader import ByteReader, GlyphData, bitStr, lsClassObjects
 from rich import print
 from typing import Literal
 
@@ -15,7 +15,7 @@ def parse_flag(flag_bytes:bitStr):
     }
 
 
-def extract_glyph(reader: ByteReader, little_endian: Literal["big", "little"]):
+def extract_glyph_data(reader: ByteReader, little_endian: Literal["big", "little"]):
     glyph_data = GlyphData()
     glyph_data.number_of_contours = reader.read(2).int(little_endian)
     glyph_data.x_min = reader.read(2).fword(little_endian)
@@ -31,15 +31,42 @@ def extract_glyph(reader: ByteReader, little_endian: Literal["big", "little"]):
 
     max_points = glyph_data.number_of_points
     while len(glyph_data.flags) < max_points:
-        flg = parse_flag(reader.read(1).bin(little_endian))
+        flg = parse_flag(reader.read(1).bin())
         glyph_data.flags.append(flg)
         if flg["repeat"]:
             repeat_amount = reader.read(1).uint(little_endian)
             for _ in range(repeat_amount):
                 glyph_data.flags.append(flg)
 
-    print(glyph_data)
+    for idx, flg in enumerate(glyph_data.flags):
+        # Ensure Flags
+        flag_x = glyph_data.flag_def(flg, "x")
 
+        # X Flags
+        last_position = glyph_data.raw_x[-1]
+        if flag_x == "positive":
+            glyph_data.raw_x.append(last_position + reader.read(1).uint(little_endian))
+        elif flag_x == "negative":
+            glyph_data.raw_x.append(last_position - reader.read(1).uint(little_endian))
+        elif flag_x == "same":
+            glyph_data.raw_x.append(last_position)
+        elif flag_x == "16b":
+            glyph_data.raw_x.append(last_position + reader.read(2).int(little_endian))
+
+    for idx, flg in enumerate(glyph_data.flags):
+        # Y Flags
+        flag_y = glyph_data.flag_def(flg, "y")
+        last_position = glyph_data.raw_y[-1]
+        if flag_y == "positive":
+            glyph_data.raw_y.append(last_position + reader.read(1).uint(little_endian))
+        elif flag_y == "negative":
+            glyph_data.raw_y.append(last_position - reader.read(1).uint(little_endian))
+        elif flag_y == "same":
+            glyph_data.raw_y.append(last_position)
+        elif flag_y == "16b":
+            glyph_data.raw_y.append(last_position + reader.read(2).int(little_endian))
+
+        return glyph_data
 def main() -> dict:
     little_endian: Literal["big", "little"] = "big"
     reader = ByteReader("path", "fonts/font.ttf")
@@ -64,7 +91,7 @@ def main() -> dict:
 
     # Test Extract First Letter
     glyf_reader = reader.extract_reader(data["tables"]["glyf"]["offset"], data["tables"]["glyf"]["length"])
-    extract_glyph(glyf_reader, little_endian)
+    dt = extract_glyph_data(glyf_reader, little_endian)
 
     return data
 

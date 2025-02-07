@@ -1,3 +1,4 @@
+from absl.flags import flag_dict_to_args
 from typing_extensions import Literal
 
 class bitStr(str):
@@ -25,6 +26,16 @@ class GlyphData:
     number_of_contours: int
     end_point_of_contours: list[int] = []
     flags: list = []
+    # Gobal X position, Gobal Y position, On curve
+    raw_x: list[int] = [0]
+    raw_y: list[int] = [0]
+
+    @property
+    def coordinates(self):
+        on_curve = []
+        for flg in self.flags:
+            on_curve.append(flg['on curve'])
+        return list(zip(self.raw_x, self.raw_y, on_curve))
 
     @property
     def number_of_points(self):
@@ -33,6 +44,12 @@ class GlyphData:
         else:
             return 0
 
+    def flag_def(self, index, type: Literal["x", "y"]) -> str:
+        flg = index
+        if flg[f"{type} short vector"]:
+            return "positive" if flg[f"{type} is same"] else "negative"
+        else:
+            return "same" if flg[f"{type} is same"] else "16b"
 
 class ComplexBytes:
     def __init__(self, information: bytes):
@@ -50,7 +67,7 @@ class ComplexBytes:
     def uint(self, little_endian):
         return int.from_bytes(self.data, signed=False, byteorder=little_endian)
 
-    def bin(self, little_endian):
+    def bin(self, ):
         return bitStr(' '.join(format(byte, '08b') for byte in self.data))
 
     def fword(self, little_endian):
@@ -60,8 +77,6 @@ class ComplexBytes:
 
     def hex(self, little_endian=True):
         hex_info = self.data.hex()
-        if little_endian:
-            hex_info = hex_info[::-1]
         return f"0x{hex_info}"
 
     def __repr__(self):
@@ -98,3 +113,8 @@ class ByteReader:
 
     def read_pos(self, position: int, length:int) -> ComplexBytes:
         return ComplexBytes(self.file_bytes[position: position+length])
+
+def lsClassObjects(obj):
+    attributes = dir(obj)
+    filtered_attributes = {attr: getattr(obj, attr) for attr in attributes if not attr.startswith('__')}
+    return filtered_attributes
