@@ -1,5 +1,38 @@
 from typing_extensions import Literal
 
+class bitStr(str):
+    def reverse(self):
+        return bitStr(self[::-1])
+
+    def is_high(self, idx):
+        char = self[idx]
+        if char == "1":
+            return True
+        else:
+            return False
+
+    def is_low(self, idx):
+        char = self[idx]
+        if char == "1":
+            return True
+        else:
+            return False
+class GlyphData:
+    x_min: int
+    y_min: int
+    x_max: int
+    y_max: int
+    number_of_contours: int
+    end_point_of_contours: list[int] = []
+    flags: list = []
+
+    @property
+    def number_of_points(self):
+        if len(self.end_point_of_contours) != 0:
+            return self.end_point_of_contours[-1] + 1
+        else:
+            return 0
+
 
 class ComplexBytes:
     def __init__(self, information: bytes):
@@ -18,7 +51,7 @@ class ComplexBytes:
         return int.from_bytes(self.data, signed=False, byteorder=little_endian)
 
     def bin(self, little_endian):
-        return ' '.join(format(byte, '08b') for byte in self.data)  
+        return bitStr(' '.join(format(byte, '08b') for byte in self.data))
 
     def fword(self, little_endian):
         if len(self.data) != 2:

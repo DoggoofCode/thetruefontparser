@@ -1,26 +1,42 @@
-from bytereader import ByteReader
+from bytereader import ByteReader, GlyphData, bitStr
 from rich import print
 from typing import Literal
 
-def extract_glyph(reader: ByteReader, little_endian: Literal["big", "little"]):
-    glyph_data = {
-        "Number of Contours": reader.read(2).int(little_endian),
-        "xMin": reader.read(2).fword(little_endian),
-        "yMin": reader.read(2).fword(little_endian),
-        "xMax": reader.read(2).fword(little_endian),
-        "yMax": reader.read(2).fword(little_endian)
+
+def parse_flag(flag_bytes:bitStr):
+    flag_bytes = flag_bytes.reverse()
+    return {
+        "on curve": flag_bytes.is_high(0),
+        "x short vector": flag_bytes.is_high(1),
+        "y short vector": flag_bytes.is_high(2),
+        "repeat": flag_bytes.is_high(3),
+        "x is same": flag_bytes.is_high(4),
+        "y is same": flag_bytes.is_high(5),
     }
-    end_points_of_contours = []
-    for _ in range(glyph_data["Number of Contours"]):
-        end_points_of_contours.append(reader.read(2).uint(little_endian))
-    glyph_data["End Points of Contours"] = end_points_of_contours
-    if glyph_data["Number of Contours"] != 0:
-        glyph_data["Number of Points"] = glyph_data["End Points of Contours"][-1] + 1
+
+
+def extract_glyph(reader: ByteReader, little_endian: Literal["big", "little"]):
+    glyph_data = GlyphData()
+    glyph_data.number_of_contours = reader.read(2).int(little_endian)
+    glyph_data.x_min = reader.read(2).fword(little_endian)
+    glyph_data.y_min = reader.read(2).fword(little_endian)
+    glyph_data.x_max = reader.read(2).fword(little_endian)
+    glyph_data.y_max = reader.read(2).fword(little_endian)
+
+    for _ in range(glyph_data.number_of_contours):
+        glyph_data.end_point_of_contours.append(reader.read(2).uint(little_endian))
 
     # skip goofy ah instructions
     reader.shift(reader.read(2).uint(little_endian))
 
-     
+    max_points = glyph_data.number_of_points
+    while len(glyph_data.flags) < max_points:
+        flg = parse_flag(reader.read(1).bin(little_endian))
+        glyph_data.flags.append(flg)
+        if flg["repeat"]:
+            repeat_amount = reader.read(1).uint(little_endian)
+            for _ in range(repeat_amount):
+                glyph_data.flags.append(flg)
 
     print(glyph_data)
 
