@@ -1,4 +1,3 @@
-from absl.flags import flag_dict_to_args
 from typing_extensions import Literal
 
 class bitStr(str):
@@ -93,7 +92,7 @@ class ByteReader:
             with open(info, "rb") as file:
                 self.file_bytes: bytes = file.read()
         elif bytes_or_path == "bytes":
-            self.file_bytes = info
+            self.file_bytes = info # type: ignore
 
     def move(self, moved_bytes: int):
         self.head += moved_bytes
