@@ -1,4 +1,4 @@
-from bytereader import ByteReader, GlyphData, bitStr, lsClassObjects
+from bytereader import ByteReader, FontData, GlyphData, bitStr, lsClassObjects
 from rich import print
 from typing import Literal
 
@@ -79,19 +79,18 @@ def extract_glyph_data(reader: ByteReader, little_endian: Literal["big", "little
     print(lsClassObjects(glyph_data))
     return glyph_data
 
-def main() -> dict:
+def main() -> FontData:
     little_endian: Literal["big", "little"] = "big"
     reader = ByteReader("path", "fonts/font.ttf")
-    data = {}
+    data = FontData()
 
     # Get the amount of tables
     reader.shift(4)
-    data["Number Of Tables"] = reader.read(2).uint(little_endian)
+    data.number_of_tables = reader.read(2).uint(little_endian)
     reader.shift(6)
 
     # Get the locations of each table
-    data["tables"] = {}
-    for tlb_index in range(data["Number Of Tables"]):
+    for tlb_index in range(data.number_of_tables):
         table_data = {
             "tag": reader.read(4).text(),
             "check_sum": reader.read(4).uint(little_endian),
@@ -99,10 +98,13 @@ def main() -> dict:
             "length": reader.read(4).uint(little_endian),
         }
 
-        data["tables"][table_data["tag"]] = table_data
+        data.tables[table_data["tag"]] = table_data
 
     # Test Extract First Letter
-    glyf_reader = reader.extract_reader(data["tables"]["glyf"]["offset"], data["tables"]["glyf"]["length"])
+    glyf_reader = reader.extract_reader(
+        data.get_table_info("glyf", "offset"),
+        data.get_table_info("glyf", "length")
+    )
     extract_glyph_data(glyf_reader, little_endian)
 
     return data

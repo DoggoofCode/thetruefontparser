@@ -117,3 +117,10 @@ def lsClassObjects(obj):
     attributes = dir(obj)
     filtered_attributes = {attr: getattr(obj, attr) for attr in attributes if not attr.startswith('__')}
     return filtered_attributes
+
+class FontData:
+    number_of_tables: int
+    tables: dict = {}
+
+    def get_table_info(self, table_name: str, attribute: str):
+        return self.tables[table_name][attribute]
